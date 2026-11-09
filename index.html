@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stark Industries | 3D Suit Lab</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080d16;color:#eaf3ff;font-family:Arial,sans-serif}
+header{padding:16px 20px;background:#101b2b;border-bottom:1px solid #24415e}
+header h1{margin:0;color:#55caff;font-size:23px;letter-spacing:2px}
+header p{margin:5px 0 0;color:#91a9c1;font-size:12px}
+main{display:grid;grid-template-columns:290px 1fr;min-height:calc(100vh - 75px)}
+aside{padding:18px;background:#0d1725;border-right:1px solid #20354b;overflow:auto}
+h2{font-size:15px;color:#58caff;margin:12px 0}
+label{display:block;font-size:12px;color:#a9bfd3;margin:12px 0 5px}
+select,input,button{width:100%;padding:10px;border-radius:7px;border:1px solid #29435d;background:#142438;color:white}
+input[type=color]{height:40px;padding:3px}
+button{cursor:pointer;background:#087db5;border:0;font-weight:bold;margin-top:10px}
+button:hover{background:#119edc}
+.secondary{background:#20354b}
+#viewer{position:relative;min-height:560px;background:radial-gradient(ellipse at center,#172d43,#080d16 70%)}
+#stage{position:absolute;inset:0}
+#hint{position:absolute;bottom:15px;left:0;right:0;text-align:center;color:#8da9c3;font-size:12px;pointer-events:none}
+#saved{margin-top:12px}
+.savedItem{display:flex;gap:6px;margin:6px 0}
+.savedItem button{margin:0;font-size:11px;padding:8px}
+#status{font-size:12px;color:#69d6ff;min-height:18px;margin-top:10px}
+@media(max-width:750px){
+main{grid-template-columns:1fr}
+aside{border-right:0;border-bottom:1px solid #20354b}
+#viewer{min-height:470px}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>STARK INDUSTRIES</h1>
+<p>ADVANCED ARMOR DESIGN & DEVELOPMENT • 3D SUIT LAB</p>
+</header>
+<main>
+<aside>
+<h2>CHARACTER DESIGNER</h2>
+<label>Character name</label>
+<input id="charName" value="My Custom Suit" maxlength="32">
+
+<label>Helmet design</label>
+<select id="helmet">
+<option value="iron">Iron Man Helmet</option>
+<option value="spider">Spider Helmet</option>
+<option value="knight">Knight Helmet</option>
+<option value="visor">Futuristic Visor</option>
+<option value="none">No Helmet</option>
+</select>
+
+<label>Torso design</label>
+<select id="torso">
+<option value="armor">Armored Chest</option>
+<option value="spider">Spider Suit</option>
+<option value="tech">Tech Suit</option>
+<option value="muscle">Athletic Suit</option>
+</select>
+
+<label>Arm design</label>
+<select id="arms">
+<option value="armor">Armored Arms</option>
+<option value="web">Slim Suit Arms</option>
+<option value="heavy">Heavy Armor Arms</option>
+</select>
+
+<label>Leg design</label>
+<select id="legs">
+<option value="armor">Armored Legs</option>
+<option value="slim">Slim Suit Legs</option>
+<option value="heavy">Heavy Armor Legs</option>
+</select>
+
+<h2>ARMOR COLORS</h2>
+<label>Helmet color</label><input type="color" id="helmetColor" value="#c62828">
+<label>Torso color</label><input type="color" id="torsoColor" value="#b51f24">
+<label>Arms color</label><input type="color" id="armsColor" value="#b51f24">
+<label>Legs color</label><input type="color" id="legsColor" value="#252b38">
+
+<button id="update">UPDATE 3D SUIT</button>
+<button id="save">SAVE CHARACTER</button>
+<button class="secondary" id="new">NEW CHARACTER</button>
+<h2>SAVED CHARACTERS</h2>
+<div id="saved"></div>
+<div id="status">SYSTEM READY</div>
+</aside>
+<section id="viewer">
+<div id="stage"></div>
+<div id="hint">DRAG TO ROTATE • PINCH OR SCROLL TO ZOOM</div>
+</section>
+</main>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+
+const stage=document.getElementById("stage");
+const scene=new THREE.Scene();
+scene.background=new THREE.Color("#080d16");
+const camera=new THREE.PerspectiveCamera(40,1,0.1,100);
+camera.position.set(5,3.2,8);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.target.set(0,2.1,0);
+controls.minDistance=3;
+controls.maxDistance=13;
+controls.maxPolarAngle=Math.PI*0.88;
+
+scene.add(new THREE.HemisphereLight(0xb9dcff,0x182333,2));
+const light=new THREE.DirectionalLight(0xffffff,3);
+light.position.set(4,8,6);
+light.castShadow=true;
+scene.add(light);
+const rim=new THREE.PointLight(0x168cff,35,12);
+rim.position.set(-4,4,-3);
+scene.add(rim);
+
+const floor=new THREE.Mesh(new THREE.CircleGeometry(5,64),
+new THREE.MeshStandardMaterial({color:0x101e2c,roughness:.8}));
+floor.rotation.x=-Math.PI/2;
+floor.position.y=-.06;
+floor.receiveShadow=true;
+scene.add(floor);
+const grid=new THREE.GridHelper(10,20,0x17618c,0x20354a);
+grid.position.y=-.045;
+scene.add(grid);
+
+const character=new THREE.Group();
+scene.add(character);
+let saved=[];
+
+function material(color,metal=0.65){
+return new THREE.MeshStandardMaterial({color,metalness:metal,roughness:.3});
+}
+function part(parent,geo,mat,x,y,z){
+const m=new THREE.Mesh(geo,mat);
+m.position.set(x,y,z);
+m.castShadow=true;
+m.receiveShadow=true;
+parent.add(m);
+return m;
+}
+function box(parent,x,y,z,w,h,d,mat,bevel=0){
+return part(parent,new THREE.BoxGeometry(w,h,d),mat,x,y,z);
+}
+function sphere(parent,x,y,z,sx,sy,sz,mat){
+return part(parent,new THREE.SphereGeometry(1,24,16),mat,x,y,z)
+.scale.set(sx,sy,sz);
+}
+function cylinder(parent,x,y,z,r1,r2,h,mat){
+return part(parent,new THREE.CylinderGeometry(r1,r2,h,16),mat,x,y,z);
+}
+
+function build(data){
+while(character.children.length)character.remove(character.children[0]);
+const gold=material("#e5a52c",.75);
+const glow=material("#52dfff",.45);
+const dark=material("#182333",.8);
+const hc=material(data.helmetColor);
+const tc=material(data.torsoColor);
+const ac=material(data.armsColor);
+const lc=material(data.legsColor);
+
+// Legs
+for(const side of [-1,1]){
+const x=side*.23;
+const leg=data.legs==="slim"?.16:data.legs==="heavy"?.23:.19;
+box(character,x,1.05,0,leg,1.05,.24,lc);
+sphere(character,x,.48,.02,.16,.18,.22,dark);
+box(character,x,.25,.09,.22,.16,.42,dark);
+box(character,x,.9,.135,leg*.75,.22,.035,gold);
+}
+// Torso
+if(data.torso==="muscle"){
+sphere(character,0,2.05,0,.55,.67,.3,tc);
+}else{
+box(character,0,2.05,0,.88,1.05,.42,tc);
+}
+box(character,0,1.58,0,.58,.22,.38,dark);
+if(data.torso!=="spider"){
+sphere(character,0,2.2,.225,.16,.16,.055,glow);
+box(character,0,2.68,0,.58,.16,.4,gold);
+}else{
+box(character,0,2.1,.23,.07,.75,.025,gold);
+}
+// Arms
+for(const side of [-1,1]){
+const x=side*.62;
+const width=data.arms==="heavy"?.24:.18;
+sphere(character,x,2.48,0,width,.24,.23,ac);
+box(character,x,2.05,0,width,.55,.25,ac);
+sphere(character,x,1.68,0,width,.17,.19,ac);
+box(character,x,1.42,.02,.19,.35,.2,ac);
+sphere(character,x,1.2,.04,.15,.15,.15,dark);
+if(data.arms==="heavy")box(character,x,2.05,.14,.23,.2,.06,gold);
+}
+// Neck
+cylinder(character,0,2.72,0,.15,.15,.18,dark);
+
+// Helmet
+if(data.helmet!=="none"){
+if(data.helmet==="knight"){
+sphere(character,0,3.15,0,.34,.43,.3,hc);
+part(character,new THREE.ConeGeometry(.24,.35,4),gold,0,3.55,-.02).rotation.z=Math.PI;
+}else if(data.helmet==="visor"){
+sphere(character,0,3.12,0,.34,.36,.3,hc);
+box(character,0,3.13,.27,.43,.12,.045,glow);
+}else{
+sphere(character,0,3.13,0,.34,.4,.3,hc);
+if(data.helmet==="spider"){
+box(character,0,3.12,.285,.43,.1,.035,dark);
+for(const s of [-1,1]){
+const eye=part(character,new THREE.BoxGeometry(.14,.09,.035),glow,s*.13,3.16,.31);
+eye.rotation.z=s*-.35;
+}
+}else{
+box(character,0,3.12,.285,.39,.12,.045,gold);
+box(character,0,2.94,.27,.24,.12,.06,dark);
+}
+}
+}
+}
+function getData(){
+return {
+name:document.getElementById("charName").value||"Custom Suit",
+helmet:helmet.value,torso:torso.value,arms:arms.value,legs:legs.value,
+helmetColor:helmetColor.value,torsoColor:torsoColor.value,
+armsColor:armsColor.value,legsColor:legsColor.value
+};
+}
+const ids=["helmet","torso","arms","legs","helmetColor","torsoColor","armsColor","legsColor"];
+function load(data){
+charName.value=data.name;
+ids.forEach(id=>document.getElementById(id).value=data[id]);
+build(data);
+}
+document.getElementById("update").onclick=()=>{
+build(getData());status.textContent="3D ARMOR UPDATED";
+};
+document.getElementById("save").onclick=()=>{
+const d=getData();
+const index=saved.findIndex(x=>x.name===d.name);
+if(index>=0)saved[index]=d;else saved.push(d);
+try{localStorage.setItem("stark-suits",JSON.stringify(saved));}catch(e){}
+renderSaved();status.textContent="CHARACTER SAVED";
+};
+document.getElementById("new").onclick=()=>{
+load({name:"New Custom Suit",helmet:"iron",torso:"armor",arms:"armor",legs:"armor",
+helmetColor:"#c62828",torsoColor:"#b51f24",armsColor:"#b51f24",legsColor:"#252b38"});
+status.textContent="NEW DESIGN STARTED";
+};
+function renderSaved(){
+const area=document.getElementById("saved");area.innerHTML="";
+saved.forEach((d,i)=>{
+const row=document.createElement("div");row.className="savedItem";
+const b=document.createElement("button");b.textContent=d.name;
+b.onclick=()=>{load(d);status.textContent="LOADED "+d.name;};
+const del=document.createElement("button");del.textContent="×";del.className="secondary";
+del.style.width="42px";
+del.onclick=()=>{saved.splice(i,1);localStorage.setItem("stark-suits",JSON.stringify(saved));renderSaved();};
+row.append(b,del);area.append(row);
+});
+}
+try{saved=JSON.parse(localStorage.getItem("stark-suits")||"[]");}catch(e){saved=[];}
+renderSaved();
+load({name:"My Custom Suit",helmet:"iron",torso:"armor",arms:"armor",legs:"armor",
+helmetColor:"#c62828",torsoColor:"#b51f24",armsColor:"#b51f24",legsColor:"#252b38"});
+
+function resize(){
+const w=stage.clientWidth,h=stage.clientHeight;
+camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+animate();
+</script>
+</body>
+</html>
